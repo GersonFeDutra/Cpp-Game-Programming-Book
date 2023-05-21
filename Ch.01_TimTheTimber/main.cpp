@@ -1,3 +1,5 @@
+#include <SFML/Window/WindowStyle.hpp>
+#include <sstream>
 // Include SFML library APIs
 #include <SFML/Graphics.hpp>
 
@@ -5,11 +7,14 @@
 using namespace sf;
 
 // Resources paths
-#define GRAPHICS_DIR "assets/graphics/"
+#define ASSETS_DIR "assets/"
+#define GRAPHICS_DIR ASSETS_DIR "graphics/"
 #define BACKGROUND_PNG GRAPHICS_DIR "background.png"
 #define TREE_PNG GRAPHICS_DIR "tree.png"
 #define BEE_PNG GRAPHICS_DIR "bee.png"
 #define CLOUD_PNG GRAPHICS_DIR "cloud.png"
+#define FONTS_DIR ASSETS_DIR "fonts/"
+#define KOMIKAP_FONT_TTF FONTS_DIR "KOMIKAP_.ttf"
 
 #define TREE_COORDS_X 810
 #define TREE_COORDS_Y 0
@@ -26,6 +31,15 @@ using namespace sf;
 #define BEE_BASE_SPEED 200
 #define BEE_BASE_HEIGHT 500
 #define BEE_START_POS_X 2000
+
+#define MESSAGE_FONT_SIZE 75
+#define SCORE_FONT_SIZE 100
+#define SCORE_POS_X 20
+#define SCORE_POS_Y 20
+
+#define TIME_BAR_START_WIDTH 400
+#define TIME_BAR_HEIGHT 80
+#define GAME_DEFAULT_TIME 6.0f
 
 // This is where our game starts from
 int main()
@@ -106,6 +120,45 @@ int main()
 		clouds[i].speed = 0.0f;
 	}
 
+	// Draw some text
+	struct {
+		int points;
+		Text text;
+	} score;
+	score.points = 0;
+
+	Text messageText;
+
+	// We need to choose a font
+	Font font;
+	font.loadFromFile(KOMIKAP_FONT_TTF);
+
+	// Set the font to our message
+	messageText.setFont(font);
+	score.text.setFont(font);
+
+	// Assign the actual message
+	messageText.setString("Press key to start!");
+	score.text.setString("Score = 0");
+
+	// Make it really big
+	messageText.setCharacterSize(MESSAGE_FONT_SIZE);
+	score.text.setCharacterSize(SCORE_FONT_SIZE);
+
+	// Choose a color
+	messageText.setFillColor(Color::White);
+	score.text.setFillColor(Color::White);
+
+	// Position the text
+	FloatRect textRect = messageText.getLocalBounds();
+
+	messageText.setOrigin(
+		textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+
+	messageText.setPosition(SCREEN_SIZE.x / 2.0f, SCREEN_SIZE.y / 2.0f);
+
+	score.text.setPosition(SCORE_POS_X, SCORE_POS_Y);
+
 	/*
 	 ************************************************************
 	 * Main Loop
@@ -114,6 +167,24 @@ int main()
 
 	// Variable to control time itself
 	Clock clock;
+
+	// Time Bar
+	struct {
+		RectangleShape shape;
+		Time gameTimeTotal;
+		float timeRemaining;
+		float widthPerSecond;
+	} timeBar;
+
+	timeBar.shape.setSize(Vector2f(TIME_BAR_START_WIDTH, TIME_BAR_HEIGHT));
+	timeBar.shape.setFillColor(Color::Red);
+	timeBar.shape.setPosition((SCREEN_SIZE.x / 2.0f) - TIME_BAR_START_WIDTH / 2.0f, SCREEN_SIZE.y);
+
+	timeBar.timeRemaining = GAME_DEFAULT_TIME;
+	timeBar.widthPerSecond = TIME_BAR_START_WIDTH / timeBar.timeRemaining;
+
+	// Track whether the game is running
+	bool paused = true;
 
 	while (window.isOpen()) {
 		/*
@@ -125,6 +196,15 @@ int main()
 		if (Keyboard::isKeyPressed(Keyboard::Escape))
 			window.close();
 
+		// Start the game
+		if (Keyboard::isKeyPressed(Keyboard::Return)) {
+			paused = false;
+
+			// Reset the time and the score
+			score.points = 0;
+			timeBar.timeRemaining = 6;
+		}
+
 		/*
 		 ************************************************************
 		 * Update the scene
@@ -134,54 +214,87 @@ int main()
 		// Measure time
 		Time delta = clock.restart();
 
+		if (!paused) {
+
+			// Subtract from the amout of time remaining
+			timeBar.timeRemaining -= delta.asSeconds();
+			// Size up the time bar
+			timeBar.shape.setSize(
+				Vector2f(timeBar.widthPerSecond * timeBar.timeRemaining, TIME_BAR_HEIGHT));
+
+			if (timeBar.timeRemaining <= 0.0f) {
+				// Pause the game
+				paused = true;
+
+				// Change the message shown to the player
+				messageText.setString("Out of time!!");
+
 		// Setup the bee
 		if (!bee.active) {
 			// How fast is the bee?
 			srand((int)time(0));
 			bee.speed = (rand() % BEE_BASE_SPEED) + BEE_BASE_SPEED;
+				// Reposition the text based on its size
+				FloatRect textRect = messageText.getLocalBounds();
+				messageText.setOrigin(
+					textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+				messageText.setPosition(SCREEN_SIZE.x / 2.0f, SCREEN_SIZE.y / 2.0f);
+			}
 
-			// How high is the bee?
-			srand((int)time(0) * 10);
-			float height = (rand() % BEE_BASE_HEIGHT) + BEE_BASE_HEIGHT;
-			bee.sprite.setPosition(BEE_START_POS_X, height);
+			// Setup the bee
+			if (!bee.active) {
+				// How fast is the bee?
+				srand((int)time(0));
+				bee.speed = (rand() % BEE_BASE_SPEED) + BEE_BASE_SPEED;
 
-			bee.active = true;
-		}
-		else {
-			// Move the bee
-			bee.sprite.setPosition(bee.sprite.getPosition().x - (bee.speed * delta.asSeconds()),
-				bee.sprite.getPosition().y);
+				// How high is the bee?
+				srand((int)time(0) * 10);
+				float height = (rand() % BEE_BASE_HEIGHT) + BEE_BASE_HEIGHT;
+				bee.sprite.setPosition(BEE_START_POS_X, height);
 
-			// Has the bee reached the left-hand edge of the screen?
-			if (bee.sprite.getPosition().x < -100)
-				bee.active = false; // Set it up ready to be a whole new bee next frame
-		}
-
-		// Manage the clouds
-		for (int i = 0, n = 1; i < CLOUDS_N; i++, n++) {
-			Cloud *cloud = &clouds[i];
-
-			if (!cloud->active) {
-				// How fast is the cloud
-				srand((int)time(0) * 10 * n);
-				cloud->speed = (rand() % (CLOUD_MAX_SPEED - CLOUD_MIN_SPEED)) + CLOUD_MIN_SPEED;
-
-				// How high is the cloud
-				srand((int)time(0) * 10 * n);
-				float height = (rand() % CLOUD_HEIGHT_OFFSET * n) - 150 * i;
-				cloud->sprite.setPosition(CLOUD_COORDS_X * n, height);
-				cloud->active = true;
+				bee.active = true;
 			}
 			else {
-				cloud->sprite.setPosition(
-					cloud->sprite.getPosition().x + (cloud->speed * delta.asSeconds()),
-					cloud->sprite.getPosition().y);
+				// Move the bee
+				bee.sprite.setPosition(bee.sprite.getPosition().x - (bee.speed * delta.asSeconds()),
+					bee.sprite.getPosition().y);
 
-				// Has the cloud reached the right hand edge of the screen?
-				if (cloud->sprite.getPosition().x > SCREEN_SIZE.x)
-					cloud->active = false; // Set it up ready to be a whole new cloud next frame
+				// Has the bee reached the left-hand edge of the screen?
+				if (bee.sprite.getPosition().x < -100)
+					bee.active = false; // Set it up ready to be a whole new bee next frame
 			}
-		}
+
+			// Manage the clouds
+			for (int i = 0, n = 1; i < CLOUDS_N; i++, n++) {
+				Cloud *cloud = &clouds[i];
+
+				if (!cloud->active) {
+					// How fast is the cloud
+					srand((int)time(0) * 10 * n);
+					cloud->speed = (rand() % (CLOUD_MAX_SPEED - CLOUD_MIN_SPEED)) + CLOUD_MIN_SPEED;
+
+					// How high is the cloud
+					srand((int)time(0) * 10 * n);
+					float height = (rand() % CLOUD_HEIGHT_OFFSET * n) - 150 * i;
+					cloud->sprite.setPosition(CLOUD_COORDS_X * n, height);
+					cloud->active = true;
+				}
+				else {
+					cloud->sprite.setPosition(
+						cloud->sprite.getPosition().x + (cloud->speed * delta.asSeconds()),
+						cloud->sprite.getPosition().y);
+
+					// Has the cloud reached the right hand edge of the screen?
+					if (cloud->sprite.getPosition().x > SCREEN_SIZE.x)
+						cloud->active = false; // Set it up ready to be a whole new cloud next frame
+				}
+			}
+
+			// Update the score text
+			std::stringstream ss;
+			ss << "Score = " << score.points;
+			score.text.setString(ss.str());
+		} // End: if !paused
 
 		/*
 		 ************************************************************
@@ -204,6 +317,15 @@ int main()
 
 		// Draw the insect
 		window.draw(bee.sprite);
+
+		// Draw the score
+		window.draw(score.text);
+
+		// Draw the time bar
+		window.draw(timeBar.shape);
+
+		if (paused)
+			window.draw(messageText); // Draw our message
 
 		// Show everything we just draw
 		window.display();
