@@ -13,6 +13,11 @@ using namespace sf;
 #define TREE_PNG GRAPHICS_DIR "tree.png"
 #define BEE_PNG GRAPHICS_DIR "bee.png"
 #define CLOUD_PNG GRAPHICS_DIR "cloud.png"
+#define BRANCH_PNG GRAPHICS_DIR "branch.png"
+#define PLAYER_PNG GRAPHICS_DIR "player.png"
+#define LOG_PNG GRAPHICS_DIR "log.png"
+#define RIP_PNG GRAPHICS_DIR "rip.png"
+#define AXE_PNG GRAPHICS_DIR "axe.png"
 #define FONTS_DIR ASSETS_DIR "fonts/"
 #define KOMIKAP_FONT_TTF FONTS_DIR "KOMIKAP_.ttf"
 
@@ -41,6 +46,69 @@ using namespace sf;
 #define TIME_BAR_HEIGHT 80
 #define GAME_DEFAULT_TIME 6.0f
 
+#define BRANCHES_N 6
+#define BRANCH_START_POS_X -2000
+#define BRANCH_START_POS_Y -2000
+#define BRANCH_ORIGIN_X 220
+#define BRANCH_ORIGIN_Y 20
+#define BRANCH_HEIGHT_OFFSET 150
+#define BRANCH_LEFT_POS 610
+#define BRANCH_RIGHT_POS 1130
+#define BRANCH_HIDE_POS 3000
+
+#define PLAYER_POS_X 700
+#define PLAYER_POS_Y 830
+#define PLAYER_POS_RIGHT 1200
+#define PLAYER_POS_LEFT 580
+#define PLAYER_START_POS_X PLAYER_POS_LEFT
+#define PLAYER_START_POS_Y 720
+#define PLAYER_HIDDEN_POS_X 2000
+#define PLAYER_HIDDEN_POS_Y 600
+
+#define AXE_POS_X 700
+#define AXE_POS_Y 830
+// Line the axe up with the tree
+#define AXE_POS_LEFT 700.0f
+#define AXE_POS_RIGHT 1075.0f
+#define AXE_HIDDEN_POS 2000
+
+#define LOG_POS_X 810
+#define LOG_POS_Y 720
+#define LOG_SPEED_X 1000
+#define LOG_SPEED_Y -1500
+#define LOG_SPEED -5000
+#define LOG_RIGHT_LIM -100
+#define LOG_LEFT_LIM 2000
+
+#define RIP_POS_X 525
+#define RIP_POS_Y 760
+#define RIP_START_POS_X 600
+#define RIP_START_POS_Y 860
+#define RIP_HIDDEN_POS_X 675
+#define RIP_HIDDEN_POS_Y 2000
+
+#define LOW_RES
+
+// Update the text axis to its center
+#define text_axis_center(TEXT)                                                                     \
+	FloatRect textRect = TEXT.getLocalBounds();                                                    \
+	TEXT.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+#define text_screen_center(TEXT, SCREEN_SIZE)                                                      \
+	text_axis_center(TEXT) TEXT.setPosition(SCREEN_SIZE.x / 2.0f, SCREEN_SIZE.y / 2.0f);
+
+#define time_bonus(SCORE) ((2.0f / (SCORE)) + .15f)
+
+// Function declarations
+void branches_update(int seed);
+
+// Where is the player / branch?
+enum class side { LEFT, RIGHT, NONE };
+
+struct branch {
+	Sprite sprite;
+	side position;
+} branches[BRANCHES_N];
+
 // This is where our game starts from
 int main()
 {
@@ -49,11 +117,19 @@ int main()
 		int y;
 	} SCREEN_SIZE = {1920, 1080};
 
+#ifdef LOW_RES
+	// Low res
+	VideoMode vm(960, 540);
+	RenderWindow window(vm, "TimTheTimber", Style::Titlebar);
+	View view(sf::FloatRect(0, 0, SCREEN_SIZE.x, SCREEN_SIZE.y));
+	window.setView(view);
+#else
 	// Create a video mode object to setup window
 	VideoMode va(SCREEN_SIZE.x, SCREEN_SIZE.y);
 
 	// Create and open a window for this game
 	RenderWindow window(va, "TimTheTimber", Style::Fullscreen);
+#endif
 
 	/*
 	 ************************************************************
@@ -150,14 +226,73 @@ int main()
 	score.text.setFillColor(Color::White);
 
 	// Position the text
-	FloatRect textRect = messageText.getLocalBounds();
-
-	messageText.setOrigin(
-		textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
-
-	messageText.setPosition(SCREEN_SIZE.x / 2.0f, SCREEN_SIZE.y / 2.0f);
+	text_screen_center(messageText, SCREEN_SIZE);
 
 	score.text.setPosition(SCORE_POS_X, SCORE_POS_Y);
+
+	// Prepare the branches
+	Texture textureBranch;
+	textureBranch.loadFromFile(BRANCH_PNG);
+
+	// Set the texture for each branch sprite
+	for (struct branch *p = branches + BRANCHES_N; p-- != branches;) {
+		Sprite *branch = &p->sprite;
+
+		branch->setTexture(textureBranch);
+		branch->setPosition(BRANCH_START_POS_X, BRANCH_START_POS_Y);
+
+		// Set the sprite's position to dead centre
+		// We can then spin it round without changing its position
+		branch->setOrigin(BRANCH_ORIGIN_X, BRANCH_ORIGIN_Y);
+	}
+
+	// Prepare the player
+	Texture texturePlayer;
+	texturePlayer.loadFromFile(PLAYER_PNG);
+
+	struct {
+		Sprite sprite;
+		side currentSide;
+	} player;
+
+	player.sprite.setTexture(texturePlayer);
+	player.sprite.setPosition(PLAYER_POS_X, PLAYER_POS_Y);
+
+	// Player starts on the left
+	player.currentSide = side::LEFT;
+
+	// Prepare the gravestone
+	Texture textureRip;
+	textureRip.loadFromFile(RIP_PNG);
+	Sprite spriteRip;
+	spriteRip.setTexture(textureRip);
+	spriteRip.setPosition(RIP_START_POS_X, RIP_START_POS_Y);
+
+	// Prepare the axe
+	Texture textureAxe;
+	textureAxe.loadFromFile(AXE_PNG);
+	Sprite spriteAxe;
+	spriteAxe.setTexture(textureAxe);
+	spriteAxe.setPosition(AXE_POS_X, AXE_POS_Y);
+
+	// Prepare the flying log
+	Texture textureLog;
+	textureLog.loadFromFile(LOG_PNG);
+
+	struct {
+		Sprite sprite;
+		bool active;
+		float speedX;
+		float speedY;
+	} treeLog;
+
+	treeLog.sprite.setTexture(textureLog);
+	treeLog.sprite.setPosition(LOG_POS_X, LOG_POS_Y);
+
+	// Some other useful log related variables
+	treeLog.active = false;
+	treeLog.speedX = LOG_SPEED_X;
+	treeLog.speedY = LOG_SPEED_Y;
 
 	/*
 	 ************************************************************
@@ -172,19 +307,24 @@ int main()
 	struct {
 		RectangleShape shape;
 		Time gameTimeTotal;
-		float timeRemaining;
+		float remainingTime;
 		float widthPerSecond;
 	} timeBar;
 
 	timeBar.shape.setSize(Vector2f(TIME_BAR_START_WIDTH, TIME_BAR_HEIGHT));
 	timeBar.shape.setFillColor(Color::Red);
 	timeBar.shape.setPosition((SCREEN_SIZE.x / 2.0f) - TIME_BAR_START_WIDTH / 2.0f, SCREEN_SIZE.y);
+	timeBar.shape.setPosition(
+		(SCREEN_SIZE.x / 2.0f) - TIME_BAR_START_WIDTH / 2.0f, SCREEN_SIZE.y - TIME_BAR_HEIGHT);
 
-	timeBar.timeRemaining = GAME_DEFAULT_TIME;
-	timeBar.widthPerSecond = TIME_BAR_START_WIDTH / timeBar.timeRemaining;
+	timeBar.remainingTime = GAME_DEFAULT_TIME;
+	timeBar.widthPerSecond = TIME_BAR_START_WIDTH / timeBar.remainingTime;
 
 	// Track whether the game is running
 	bool paused = true;
+
+	// Control the player input
+	bool acceptInput = false;
 
 	while (window.isOpen()) {
 		/*
@@ -192,6 +332,18 @@ int main()
 		 * Handle the players input
 		 ************************************************************
 		 */
+
+		Event event;
+
+		while (window.pollEvent(event)) {
+			if (event.type == Event::KeyReleased && !paused) {
+				// Listen for the key presses again
+				acceptInput = true;
+
+				// hide the axe
+				spriteAxe.setPosition(AXE_HIDDEN_POS, spriteAxe.getPosition().y);
+			}
+		}
 
 		if (Keyboard::isKeyPressed(Keyboard::Escape))
 			window.close();
@@ -202,7 +354,70 @@ int main()
 
 			// Reset the time and the score
 			score.points = 0;
-			timeBar.timeRemaining = 6;
+			timeBar.remainingTime = 6;
+
+			// Make the branches disappear - starting in the second position
+			for (struct branch *p = branches + (BRANCHES_N - 1); p != branches; p--)
+				p->position = side::NONE;
+
+			// Make sure the gravestone is hidden
+			spriteRip.setPosition(RIP_HIDDEN_POS_X, RIP_HIDDEN_POS_Y);
+
+			// Move the player into position
+			player.sprite.setPosition(PLAYER_START_POS_X, PLAYER_START_POS_Y);
+
+			acceptInput = true;
+		}
+
+		// Wrap the player controls to make sure we are accepting input
+		if (acceptInput) {
+			// First handle pressing the right cursor key
+			if (Keyboard::isKeyPressed(Keyboard::Right)) {
+				// Make sure the player is on the right
+				player.currentSide = side::RIGHT;
+				score.points++;
+
+				// Add to the amount of time remaining
+				timeBar.remainingTime += time_bonus(score.points);
+
+				spriteAxe.setPosition(AXE_POS_RIGHT, spriteAxe.getPosition().y);
+
+				player.sprite.setPosition(PLAYER_POS_RIGHT, PLAYER_START_POS_Y);
+
+				// Update the branches
+				branches_update(score.points);
+
+				// Set the log flying to the left
+				treeLog.sprite.setPosition(LOG_POS_X, LOG_POS_Y);
+				treeLog.speedX = -LOG_SPEED;
+				treeLog.active = true;
+
+				acceptInput = false;
+			}
+
+			// Handle the left cursor key
+			if (Keyboard::isKeyPressed(Keyboard::Left)) {
+				// Make sure the player is on the left
+				player.currentSide = side::LEFT;
+				score.points++;
+
+				// Add to the amount of time remaining
+				timeBar.remainingTime += time_bonus(score.points);
+
+				spriteAxe.setPosition(AXE_POS_LEFT, spriteAxe.getPosition().y);
+
+				player.sprite.setPosition(PLAYER_POS_LEFT, PLAYER_START_POS_Y);
+
+				// Update the branches
+				branches_update(score.points);
+
+				// Set the log flying to the left
+				treeLog.sprite.setPosition(LOG_POS_X, LOG_POS_Y);
+				treeLog.speedX = LOG_SPEED;
+				treeLog.active = true;
+
+				acceptInput = false;
+			}
 		}
 
 		/*
@@ -217,28 +432,20 @@ int main()
 		if (!paused) {
 
 			// Subtract from the amout of time remaining
-			timeBar.timeRemaining -= delta.asSeconds();
+			timeBar.remainingTime -= delta.asSeconds();
 			// Size up the time bar
 			timeBar.shape.setSize(
-				Vector2f(timeBar.widthPerSecond * timeBar.timeRemaining, TIME_BAR_HEIGHT));
+				Vector2f(timeBar.widthPerSecond * timeBar.remainingTime, TIME_BAR_HEIGHT));
 
-			if (timeBar.timeRemaining <= 0.0f) {
+			if (timeBar.remainingTime <= 0.0f) {
 				// Pause the game
 				paused = true;
 
 				// Change the message shown to the player
 				messageText.setString("Out of time!!");
 
-		// Setup the bee
-		if (!bee.active) {
-			// How fast is the bee?
-			srand((int)time(0));
-			bee.speed = (rand() % BEE_BASE_SPEED) + BEE_BASE_SPEED;
 				// Reposition the text based on its size
-				FloatRect textRect = messageText.getLocalBounds();
-				messageText.setOrigin(
-					textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
-				messageText.setPosition(SCREEN_SIZE.x / 2.0f, SCREEN_SIZE.y / 2.0f);
+				text_screen_center(messageText, SCREEN_SIZE);
 			}
 
 			// Setup the bee
@@ -294,6 +501,66 @@ int main()
 			std::stringstream ss;
 			ss << "Score = " << score.points;
 			score.text.setString(ss.str());
+
+			// Update the branch sprites
+			for (int i = 0; i < BRANCHES_N; i++) {
+				struct branch *branch = &branches[i];
+				float height = i * BRANCH_HEIGHT_OFFSET;
+
+				if (branch->position == side::LEFT) {
+					// Move the sprite to the left side
+					branch->sprite.setPosition(BRANCH_LEFT_POS, height);
+
+					// Flip the sprite round the other way
+					branch->sprite.setRotation(180);
+				}
+				else if (branch->position == side::RIGHT) {
+					// Move the sprite to the right side
+					branch->sprite.setPosition(BRANCH_RIGHT_POS, height);
+
+					// Set the sprite rotation to normal
+					branch->sprite.setRotation(0);
+				}
+				else {
+					// Hide the branch
+					branch->sprite.setPosition(BRANCH_HIDE_POS, height);
+				}
+			}
+
+			// Handle a flying log
+			if (treeLog.active) {
+				treeLog.sprite.setPosition(
+					treeLog.sprite.getPosition().x + (LOG_SPEED_X * delta.asSeconds()),
+					treeLog.sprite.getPosition().y + (LOG_SPEED_Y * delta.asSeconds()));
+
+				// Has the log reached the right hand edge?
+				if (treeLog.sprite.getPosition().x < LOG_RIGHT_LIM ||
+					treeLog.sprite.getPosition().x > LOG_LEFT_LIM) {
+					// Set it up ready to be a whole new log next frame
+					treeLog.active = false;
+					treeLog.sprite.setPosition(LOG_POS_X, LOG_POS_Y);
+				}
+			}
+
+			// Has the player been squished by a branch?
+			if (branches[BRANCHES_N - 1].position == player.currentSide) {
+				// death
+				paused = true;
+				acceptInput = false;
+
+				// Draw the gravestone
+				spriteRip.setPosition(RIP_POS_X, RIP_POS_Y);
+
+				// Hide the player
+				player.sprite.setPosition(PLAYER_HIDDEN_POS_X, PLAYER_HIDDEN_POS_Y);
+
+				// Change the text of the message
+				messageText.setString("SQUISHED!");
+
+				// Center it on screen
+				text_screen_center(messageText, SCREEN_SIZE);
+			}
+
 		} // End: if !paused
 
 		/*
@@ -312,8 +579,24 @@ int main()
 		for (int i = 0; i < CLOUDS_N; ++i)
 			window.draw(clouds[i].sprite);
 
+		// Draw the branches
+		for (struct branch *p = branches; p < branches + BRANCHES_N; p++)
+			window.draw(p->sprite);
+
 		// Draw the tree
 		window.draw(spriteTree);
+
+		// Draw the player
+		window.draw(player.sprite);
+
+		// Draw the axe
+		window.draw(spriteAxe);
+
+		// Draw the flying log
+		window.draw(treeLog.sprite);
+
+		// Draw the gravestone
+		window.draw(spriteRip);
 
 		// Draw the insect
 		window.draw(bee.sprite);
@@ -332,4 +615,24 @@ int main()
 	}
 
 	return 0;
+}
+
+
+// Function definition
+void branches_update(int seed)
+{
+	// Move all the branches down one place
+	for (struct branch *p = branches + (BRANCHES_N - 1); p > branches; p--)
+		p->position = (p - 1)->position;
+
+	// Spawn a new branch at position 0
+	// LEFT, RIGHT or NONE
+	srand((int)time(0) + seed);
+	int r = (rand() % 5);
+
+	switch (r) {
+		case 0: branches[0].position = side::LEFT; break;
+		case 1: branches[0].position = side::RIGHT; break;
+		default: branches[0].position = side::NONE; break;
+	}
 }
