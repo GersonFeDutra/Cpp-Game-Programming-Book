@@ -1,6 +1,7 @@
 #include <SFML/Window/WindowStyle.hpp>
 #include <sstream>
 // Include SFML library APIs
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 
 // Make code easier to type with "using namespace"
@@ -20,6 +21,10 @@ using namespace sf;
 #define AXE_PNG GRAPHICS_DIR "axe.png"
 #define FONTS_DIR ASSETS_DIR "fonts/"
 #define KOMIKAP_FONT_TTF FONTS_DIR "KOMIKAP_.ttf"
+#define SOUND_DIR ASSETS_DIR "sound/"
+#define CHOP_WAV SOUND_DIR "chop.wav"
+#define DEATH_WAV SOUND_DIR "death.wav"
+#define OUT_OF_TIME_WAV SOUND_DIR "out_of_time.wav"
 
 #define TREE_COORDS_X 810
 #define TREE_COORDS_Y 0
@@ -294,6 +299,25 @@ int main()
 	treeLog.speedX = LOG_SPEED_X;
 	treeLog.speedY = LOG_SPEED_Y;
 
+	// Prepare the sounds
+	// The player chopping sound
+	SoundBuffer chopBuffer;
+	chopBuffer.loadFromFile(CHOP_WAV);
+	Sound chop;
+	chop.setBuffer(chopBuffer);
+
+	// The player has met his end under a branch
+	SoundBuffer deathBuffer;
+	deathBuffer.loadFromFile(DEATH_WAV);
+	Sound death;
+	death.setBuffer(deathBuffer);
+
+	// Out of time
+	SoundBuffer ootBuffer;
+	ootBuffer.loadFromFile(OUT_OF_TIME_WAV);
+	Sound outOfTime;
+	outOfTime.setBuffer(ootBuffer);
+
 	/*
 	 ************************************************************
 	 * Main Loop
@@ -393,6 +417,9 @@ int main()
 				treeLog.active = true;
 
 				acceptInput = false;
+
+				// Play a chop sound
+				chop.play();
 			}
 
 			// Handle the left cursor key
@@ -417,6 +444,9 @@ int main()
 				treeLog.active = true;
 
 				acceptInput = false;
+
+				// Play a chop sound
+				chop.play();
 			}
 		}
 
@@ -446,6 +476,9 @@ int main()
 
 				// Reposition the text based on its size
 				text_screen_center(messageText, SCREEN_SIZE);
+
+				// Play the out of time sound
+				outOfTime.play();
 			}
 
 			// Setup the bee
@@ -559,6 +592,9 @@ int main()
 
 				// Center it on screen
 				text_screen_center(messageText, SCREEN_SIZE);
+
+				// Play the death sound
+				death.play();
 			}
 
 		} // End: if !paused
