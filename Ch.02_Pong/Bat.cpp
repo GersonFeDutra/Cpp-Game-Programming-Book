@@ -30,34 +30,34 @@ RectangleShape Bat::getShape()
 
 void Bat::moveLeft()
 {
-	m_MovingLeft = true;
+	m_IsMovingLeft = true;
 }
 
 
 void Bat::moveRight()
 {
-	m_MovingRight = true;
+	m_IsMovingRight = true;
 }
 
 
 void Bat::stopLeft()
 {
-	m_MovingLeft = false;
+	m_IsMovingLeft = false;
 }
 
 
 void Bat::stopRight()
 {
-	m_MovingRight = false;
+	m_IsMovingRight = false;
 }
 
 
 void Bat::update(Time delta)
 {
-	if (m_MovingLeft)
+	if (m_IsMovingLeft)
 		m_Position.x -= m_Speed * delta.asSeconds();
 
-	if (m_MovingRight)
+	if (m_IsMovingRight)
 		m_Position.x += m_Speed * delta.asSeconds();
 
 	m_Shape.setPosition(m_Position);

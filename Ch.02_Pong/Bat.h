@@ -12,8 +12,8 @@ class Bat
 	RectangleShape m_Shape;
 
 	float m_Speed = 1000.0f;
-	bool m_MovingRight = false;
-	bool m_MovingLeft = false;
+	bool m_IsMovingRight = false;
+	bool m_IsMovingLeft = false;
 
   public:
 	Bat(float startX, float startY);
