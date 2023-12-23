@@ -1,15 +1,31 @@
 #include "Player.h"
+#include "TextureHolder.h"
+#include "ZombieArena.h"
 #include <SFML/Graphics.hpp>
 
 #define ARENA_START_WIDTH 500
 #define ARENA_START_HEIGHT 500
-#define ARENA_DEFAULT_TILE_SIZE 50
+
+#define BG_PNG "graphics/background_sheet.png"
+
+#define get_input_axis(DIRECTION)                                  \
+	{                                                              \
+		DIRECTION.y -= (float)Keyboard::isKeyPressed(Keyboard::W); \
+		DIRECTION.y += (float)Keyboard::isKeyPressed(Keyboard::S); \
+		DIRECTION.x -= (float)Keyboard::isKeyPressed(Keyboard::A); \
+		DIRECTION.x += (float)Keyboard::isKeyPressed(Keyboard::D); \
+	}
 
 using namespace sf;
 
 int main(void) {
+	TextureHolder holder;
+
 	// The game will always be in one of four states
-	enum class State { PAUSED, LEVELING_UP, GAME_OVER, PLAYING };
+	enum class State { PAUSED,
+		LEVELING_UP,
+		GAME_OVER,
+		PLAYING };
 
 	// Start with the GAME_OVER state
 	State state = State::GAME_OVER;
@@ -42,6 +58,17 @@ int main(void) {
 	// The boundaries of the arena
 	IntRect arena;
 
+	// Create the background
+	VertexArray background;
+	// Load the texture for our background vertex array
+	Texture textureBackground;
+	textureBackground.loadFromFile(BG_PNG);
+
+	// Prepare for a horde of zombies
+	int numZombies;
+	int numZombiesAlive;
+	Zombie *zombies = nullptr;
+
 	// The main game loop
 	while (window.isOpen()) {
 		/*
@@ -58,12 +85,13 @@ int main(void) {
 		Event event;
 		while (window.pollEvent(event)) {
 			if (event.type == Event::KeyPressed) {
-
 				switch (event.key.code) {
 					case Keyboard::Return:
 						switch (state) {
 							// Pause a game while playing
-							case State::PLAYING: state = State::PAUSED; break;
+							case State::PLAYING:
+								state = State::PAUSED;
+								break;
 							case State::PAUSED: {
 								// Restart while paused
 								state = State::PLAYING;
@@ -71,22 +99,25 @@ int main(void) {
 								clock.restart();
 							} break;
 							// Restart the game while in game over
-							case State::GAME_OVER: state = State::LEVELING_UP; break;
-							default: break;
+							case State::GAME_OVER:
+								state = State::LEVELING_UP;
+								break;
+							default:
+								break;
 						}
 						break;
 					// Handle the player quitting
-					case sf::Keyboard::Escape: window.close(); break;
-					default: break;
+					case sf::Keyboard::Escape:
+						window.close();
+						break;
+					default:
+						break;
 				}
 
 				switch (state) {
 					case State::PLAYING: {
-						Vector2f direction; // Handle WASD while playing
-						direction.y += (float)Keyboard::isKeyPressed(Keyboard::W);
-						direction.y -= (float)Keyboard::isKeyPressed(Keyboard::S);
-						direction.x += (float)Keyboard::isKeyPressed(Keyboard::A);
-						direction.x -= (float)Keyboard::isKeyPressed(Keyboard::D);
+						Vector2f direction(.0f, .0f); // Handle WASD while playing
+						get_input_axis(direction);
 						player.move(direction);
 					} break;
 					case State::LEVELING_UP: {
@@ -99,7 +130,8 @@ int main(void) {
 							case Keyboard::Num6: {
 								state = State::PLAYING;
 							} break;
-							default: break;
+							default:
+								break;
 						}
 						if (state == State::PLAYING) {
 							// Prepare the level
@@ -108,17 +140,37 @@ int main(void) {
 							arena.height = ARENA_START_HEIGHT;
 							arena.top = arena.left = 0;
 
-							// We will modify this line of code later
-							int tileSize = ARENA_DEFAULT_TILE_SIZE;
+							// Pass the vertex array by reference
+							// to the createBackground function
+							int tileSize = createBackground(background, arena);
 
 							// Spawn the player in the middle of the arena
 							player.spawn(arena, resolution, tileSize);
+
+							// Create a horde of zombies
+							numZombies = 10;
+
+							// Delete the previously allocated memory (if it exists)
+							delete[] zombies;
+							zombies = createHorde(numZombies, arena);
+							numZombiesAlive = numZombies;
 
 							// Reset the clock so there isn't a frame jump
 							clock.restart();
 						}
 					} // End LEVELING UP
-					default: break;
+					default:
+						break;
+				}
+			} else if (event.type == Event::KeyReleased) {
+				switch (state) {
+					case State::PLAYING: {
+						Vector2f direction(.0f, .0f); // Handle WASD while playing
+						get_input_axis(direction);
+						player.move(direction);
+					} break;
+					default:
+						break;
 				}
 			}
 
@@ -159,8 +211,14 @@ int main(void) {
 
 				// Make the view centre around the player
 				mainView.setCenter(player.getCenter());
+
+				// Loop through each Zombie and update them
+				for (int i = 0; i < numZombies; i++)
+					if (zombies[i].isAlive())
+						zombies[i].update(delta.asSeconds(), playerPos);
 			} break;
-			default: break;
+			default:
+				break;
 		} // End updating the scene
 
 		/*
@@ -180,14 +238,25 @@ int main(void) {
 				// and draw everything related to it
 				window.setView(mainView);
 
+				// Draw the background
+				window.draw(background, &textureBackground);
+
+				// Draw the zombies
+				for (int i = 0; i < numZombies; i++)
+					window.draw(zombies[i].getSprite());
+
 				// Draw the player
 				window.draw(player.getSprite());
 			} break;
 			case State::LEVELING_UP:
 			case State::PAUSED:
 			case State::GAME_OVER:
-			default: break;
+			default:
+				break;
 		}
 		window.display();
 	} // End game loop
+
+	// Delete the previously allocated memory (if it exists)
+	delete[] zombies;
 }
