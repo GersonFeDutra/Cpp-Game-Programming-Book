@@ -1,14 +1,14 @@
 #include "Player.h"
+#include "TextureHolder.h"
 
 #include <cmath>
 
 #include "assets.h"
 
 #define _Player_INVENCILITY_TIME 200 // ms
-#define _Player_HIT_DAMAGE 10        // Life taken from an extern hit
-#define _DEFAULT_SPEED_BOOST .2f     // percent
-#define _DEFAULT_HEALTH_BOOST .2f    // percent
-
+#define _Player_HIT_DAMAGE 10 // Life taken from an extern hit
+#define _DEFAULT_SPEED_BOOST .2f // percent
+#define _DEFAULT_HEALTH_BOOST .2f // percent
 
 Player::Player() {
 	m_Speed = START_SPEED;
@@ -16,13 +16,11 @@ Player::Player() {
 
 	// Associate a texture with the sprite
 	// WATCH this space
-	m_Texture.loadFromFile(PLAYER_PNG);
-	m_Sprite.setTexture(m_Texture);
+	m_Sprite = Sprite(TextureHolder::GetTexture(PLAYER_PNG));
 
 	// Set the oring of the sprite to the center for smooth rotation
 	m_Sprite.setOrigin(PLAYER_CENTER_X, PLAYER_CENTER_Y);
 }
-
 
 void Player::spawn(IntRect arena, Vector2f resolution, int tileSize) {
 	// Place the player in the middle of the arena
@@ -43,18 +41,15 @@ void Player::spawn(IntRect arena, Vector2f resolution, int tileSize) {
 	m_Resolution.y = resolution.y;
 }
 
-
 void Player::resetPlayerStats() {
 	m_Speed = START_SPEED;
 	m_Health = START_HEALTH;
 	m_MaxHealht = START_HEALTH;
 }
 
-
 Time Player::getLastHitTime() {
 	return m_LastHit;
 }
-
 
 bool Player::hit(Time timeHit) {
 	if (timeHit.asMilliseconds() - m_LastHit.asMilliseconds() > _Player_INVENCILITY_TIME) {
@@ -65,48 +60,39 @@ bool Player::hit(Time timeHit) {
 		return false;
 }
 
-
 FloatRect Player::getPosition() {
 	return m_Sprite.getGlobalBounds();
 }
-
 
 Vector2f Player::getCenter() {
 	return m_Position;
 }
 
-
 float Player::getRotation() {
 	return m_Sprite.getRotation();
 }
-
 
 Sprite Player::getSprite() {
 	return m_Sprite;
 }
 
-
 int Player::getHealth() {
 	return m_Health;
 }
 
-
 void Player::move(Vector2f direction) {
 	directionAxis = direction;
 }
-
 
 void Player::upgradeSpeed() {
 	// default% speed upgrade
 	m_Speed += (START_SPEED * _DEFAULT_SPEED_BOOST);
 }
 
-
 void Player::upgradeHealth() {
 	// default% max health upgrade
 	m_MaxHealht += (START_HEALTH * _DEFAULT_HEALTH_BOOST);
 }
-
 
 void Player::increaseHealthLvl(int amount) {
 	m_Health += amount;
@@ -115,7 +101,6 @@ void Player::increaseHealthLvl(int amount) {
 	if (m_Health > m_MaxHealht)
 		m_Health = m_MaxHealht;
 }
-
 
 void Player::update(float elapsedTime, Vector2i mousePosition) {
 	m_Position += directionAxis * m_Speed * elapsedTime;

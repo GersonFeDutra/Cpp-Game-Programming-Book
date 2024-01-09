@@ -5,10 +5,10 @@
 #include <ctime>
 
 #define DIR_GRAPHICS "graphics/"
-#define IMG_BLOATER "bloater.png"
-#define IMG_CHASER "chaser.png"
-#define IMG_CRAWLER "chaser.png"
-#define IMG_BLOOD "blood.png"
+#define IMG_BLOATER DIR_GRAPHICS "bloater.png"
+#define IMG_CHASER DIR_GRAPHICS "chaser.png"
+#define IMG_CRAWLER DIR_GRAPHICS "chaser.png"
+#define IMG_BLOOD DIR_GRAPHICS "blood.png"
 #define _ORIGIN 25
 #define PI 3.141
 
@@ -16,17 +16,17 @@
 void Zombie::spawn(float startX, float startY, Zombie::Type type, int seed) {
 	switch (type) {
 		case Zombie::Type::BLOATER: {
-			m_Sprite = Sprite(TextureHolder::GetTexture(DIR_GRAPHICS IMG_BLOATER));
+			m_Sprite = Sprite(TextureHolder::GetTexture(IMG_BLOATER));
 			m_Speed = BLOATER_SPEED;
 			m_Health = BLOATER_HEALTH;
 		} break;
 		case Zombie::Type::CHASER: {
-			m_Sprite = Sprite(TextureHolder::GetTexture(DIR_GRAPHICS IMG_CHASER));
+			m_Sprite = Sprite(TextureHolder::GetTexture(IMG_CHASER));
 			m_Speed = CHASER_SPEED;
 			m_Health = CHASER_HEALTH;
 		} break;
 		case Zombie::Type::CRAWLER: {
-			m_Sprite = Sprite(TextureHolder::GetTexture(DIR_GRAPHICS IMG_CRAWLER));
+			m_Sprite = Sprite(TextureHolder::GetTexture(IMG_CRAWLER));
 			m_Speed = CRAWLER_SPEED;
 			m_Health = CRAWLER_HEALTH;
 		}; break;
@@ -58,7 +58,7 @@ bool Zombie::hit() {
 	if (m_Health < 0) {
 		// dead
 		m_Alive = false;
-		m_Sprite.setTexture(TextureHolder::GetTexture(DIR_GRAPHICS IMG_BLOOD));
+		m_Sprite.setTexture(TextureHolder::GetTexture(IMG_BLOOD));
 		return true;
 	}
 
