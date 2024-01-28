@@ -2,6 +2,7 @@
 
 #define _IMGS "graphics/"
 #define BG_PNG _IMGS "background.png"
+#define TILES_PNG _IMGS "tiles_sheet.png"
 
 #define L_START_HV 0.001f
 #define L_END_H 0.498f
@@ -43,6 +44,9 @@ Engine::Engine() {
 
 	// Associate the sprite with the texture
 	m_BackgroundSprite.setTexture(m_BackgroundTexture);
+
+	// Load the texture for the background vertex array
+	m_LevelTiles = TextureHolder::GetTexture(TILES_PNG);
 }
 
 void Engine::run() {

@@ -25,9 +25,9 @@ void PlayableCharacter::update(float elapsedTime) {
 
 		// Is the jump going upwards
 		if (m_TimeThisJump < m_JumpDuration)
-			m_Position.y += m_Gravity * 2 * elapsedTime; // Move up at twice gravity
+			m_Position.y -= m_Gravity * 2 * elapsedTime; // Move up at twice gravity
 		else
-			m_IsFalling = !(m_IsJumping = true);
+			m_IsFalling = !(m_IsJumping = false);
 	}
 
 	// Aplly gravity
