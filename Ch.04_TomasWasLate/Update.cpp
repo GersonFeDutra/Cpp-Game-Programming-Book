@@ -89,4 +89,8 @@ void Engine::update(float deltaAsSec) {
 		m_Hud.setLevel(ssLevel.str());
 		m_FramesSinceLastHudUpdate = 0;
 	}
+
+	// Update the particles
+	if (m_PS.running())
+		m_PS.update(deltaAsSec);
 } // End of update function

@@ -4,6 +4,10 @@
 #define BG_PNG _IMGS "background.png"
 #define TILES_PNG _IMGS "tiles_sheet.png"
 
+#define _SHADERS "shaders/"
+#define VERT_SHADER _SHADERS "vertShader.vert"
+#define RIPPLE_SHADER _SHADERS "rippleShader.frag"
+
 #define L_START_HV 0.001f
 #define L_END_H 0.498f
 #define L_END_V 0.998f
@@ -12,6 +16,8 @@
 #define R_START_V L_START_HV
 #define R_END_H 0.499f
 #define R_END_V 0.998f
+
+#define PARTICLES_N 1000
 
 Engine::Engine() {
 	// Get the screen resolution
@@ -40,6 +46,15 @@ Engine::Engine() {
 	m_BGRightView.setViewport(
 			FloatRect(R_START_H, R_START_V, R_END_H, R_END_V));
 
+	// Can this graphics card use shaders?
+	if (!sf::Shader::isAvailable()) {
+		// Time to get a new PC
+		// or remove all the shader related code :(
+		m_Window.close();
+	} else
+		// Load two shaders (1 vertex, 1 fragment)
+		m_RippleShader.loadFromFile(VERT_SHADER, RIPPLE_SHADER);
+
 	m_BackgroundTexture = TextureHolder::GetTexture(BG_PNG);
 
 	// Associate the sprite with the texture
@@ -47,6 +62,9 @@ Engine::Engine() {
 
 	// Load the texture for the background vertex array
 	m_LevelTiles = TextureHolder::GetTexture(TILES_PNG);
+
+	// Initialize the particle system
+	m_PS.init(PARTICLES_N);
 }
 
 void Engine::run() {

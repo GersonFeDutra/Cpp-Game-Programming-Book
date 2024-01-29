@@ -2,6 +2,7 @@
 #include "Bob.h"
 #include "HUD.h"
 #include "LevelManager.h"
+#include "ParticleSystem.h"
 #include "SoundManager.h"
 #include "TextureHolder.h"
 #include "Thomas.h"
@@ -13,6 +14,9 @@ class Engine {
 private:
 	// The texture holder
 	TextureHolder th;
+
+	// Create a particle system
+	ParticleSystem m_PS;
 
 	// Thomas and his friend, Bob
 	Thomas m_Thomas;
@@ -53,6 +57,9 @@ private:
 	// Declare a sprite and a Texture for the background
 	Sprite m_BackgroundSprite;
 	Texture m_BackgroundTexture;
+
+	// Declare a shader for the background
+	Shader m_RippleShader;
 
 	// Is the game currently playing?
 	bool m_Playing = false;

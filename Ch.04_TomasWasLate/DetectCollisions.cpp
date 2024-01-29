@@ -1,5 +1,10 @@
 #include "Engine.h"
 
+#define BLOCK 1
+#define FIRE 2
+#define WATER 3
+#define GOAL 4
+
 bool Engine::detectCollisions(PlayableCharacter &character) {
 	bool reachedGoal = false;
 	// Make a rect for all his parts
@@ -49,12 +54,12 @@ bool Engine::detectCollisions(PlayableCharacter &character) {
 
 			// Has character been burnt or drowned?
 			// Use head as this allows him to sink a bit
-			if (m_LM.getTile(m_ArrayLevel, x, y) == 2 || m_LM.getTile(m_ArrayLevel, x, y) == 3) {
+			if (m_LM.getTile(m_ArrayLevel, x, y) == FIRE || m_LM.getTile(m_ArrayLevel, x, y) == WATER) {
 				if (character.getHead().intersects(block)) {
 					character.spawn(m_LM.getStartPosition(), GRAVITY);
 
 					// Which sound should be played?
-					if (m_LM.getTile(m_ArrayLevel, x, y) == 2) // Fire, ouch!
+					if (m_LM.getTile(m_ArrayLevel, x, y) == FIRE) // Fire, ouch!
 						m_SM.playFallInFire(); // Play a sound
 					else // Water
 						m_SM.playFallInWater(); // Play a sound
@@ -62,7 +67,7 @@ bool Engine::detectCollisions(PlayableCharacter &character) {
 			}
 
 			// Is character colliding with a regular block
-			if (m_LM.getTile(m_ArrayLevel, x, y) == 1) {
+			if (m_LM.getTile(m_ArrayLevel, x, y) == BLOCK) {
 				if (character.getRight().intersects(block))
 					character.stopRight(block.left);
 				else if (character.getLeft().intersects(block))
@@ -77,8 +82,18 @@ bool Engine::detectCollisions(PlayableCharacter &character) {
 			// More collision detection here once we have
 			// learned about particle effects
 
+			// Have the characters' feet touched fire or water?
+			// If so, start a particle effect
+			// Make sure this is the first time we have detected this
+			// by seeing if an effect is already runiing
+			if (!m_PS.running())
+				if (m_LM.getTile(m_ArrayLevel, x, y) == FIRE || m_LM.getTile(m_ArrayLevel, x, y) == WATER)
+					if (character.getFeet().intersects(block))
+						// position and start the particle system
+						m_PS.emitParticles(character.getCenter());
+
 			// Has the character reached the goal?
-			if (m_LM.getTile(m_ArrayLevel, x, y) == 4)
+			if (m_LM.getTile(m_ArrayLevel, x, y) == GOAL)
 				reachedGoal = true;
 		}
 	}
